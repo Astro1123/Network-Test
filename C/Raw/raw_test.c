@@ -171,10 +171,12 @@ int traceroute(int mode, int proto) {
 int main(void) {
     int ret;
 
+/*
     ret = arp();
     if (ret < 0) {
         return FAILURE;
     }
+*/
 /*
     ret = ping();
     if (ret < 0) {
