@@ -36,7 +36,7 @@ unsigned short get_random(void) {
 
 int execute_traceroute(raw_socket_t sock, const char *dst_mac,
                        const char *dst_ip, int proto) {
-    int ret;
+    int ret = 0;
     unsigned int i, j, k;
     unsigned short id = 0;
     time_t s_time, c_time;
@@ -87,6 +87,9 @@ int execute_traceroute(raw_socket_t sock, const char *dst_mac,
                 ret = send_udp_ipv4(sock, &udp_header, "", 0,
                                     50000, udp_send_port, dst_mac, dst_ip);
                 udp_send_port++;
+            }
+            if (ret < 0) {
+                return FAILURE;
             }
             while (1) {
                 int isrecv = 0;
@@ -166,7 +169,6 @@ int execute_traceroute(raw_socket_t sock, const char *dst_mac,
                 finish = 1;
             }
         }
-        printf("\n");
         if (finish) {
             break;
         }
