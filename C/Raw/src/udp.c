@@ -56,12 +56,12 @@ int recv_udp(raw_socket_t sock, udp_header_t *udp_header,
         memset(udp_header, 0, sizeof(udp_header_t));
         ret = recv_ip(sock, &(udp_header->ip_header), recv_ip_addr);
         if (ret < 0) {
-            return FAILURE;
+            return ret;
         }
         time(&c_time);
         if (blocking == 0 && c_time - s_time >= udp_timeout_sec) {
-            printf("Timeout.\n");
-            return FAILURE;
+            //printf("Timeout.\n");
+            return ERR_TIMEOUT;
         }
         if (udp_header->ip_header.protocol != IP_PROTO_UDP) {
             continue;
@@ -69,7 +69,7 @@ int recv_udp(raw_socket_t sock, udp_header_t *udp_header,
         ret = parse_udp_header(udp_header, udp_header->ip_header.payload, 
                                udp_header->ip_header.payload_len);
         if (ret < 0) {
-            return FAILURE;
+            return ret;
         }
         if (udp_header->dst_port == recv_port) {
             break;
@@ -96,7 +96,7 @@ int send_udp_ipv4(raw_socket_t sock, udp_header_t *udp_header,
 
     ret = build_ip_payload(udp_header, dst_ip);
     if (ret < 0) {
-        return FAILURE;
+        return ret;
     }
 
     ip_payload_len = udp_header->ip_header.payload_len;
@@ -112,7 +112,7 @@ int send_udp_ipv4(raw_socket_t sock, udp_header_t *udp_header,
                     ip_payload, ip_payload_len, 
                     dst_mac, dst_ip, IP_PROTO_UDP);
     if (ret < 0) {
-        return FAILURE;
+        return ret;
     }
     return ret;
 }
@@ -175,7 +175,7 @@ static int build_ip_payload(udp_header_t *udp_header, const char *dst_ip_str) {
 
     ret = str_to_ip(dst_ip_str, strlen(dst_ip_str)+1, &dst_ip);
     if (ret < 0) {
-        return FAILURE;
+        return ret;
     }
 
     word  = dst_ip.addr[0];

@@ -90,7 +90,7 @@ int execute_traceroute(raw_socket_t sock, const char *dst_mac,
                 udp_send_port++;
             }
             if (ret < 0) {
-                return FAILURE;
+                return ret;
             }
             while (1) {
                 memset(addr[j].addr, 0, sizeof(addr[j].addr));
@@ -103,7 +103,7 @@ int execute_traceroute(raw_socket_t sock, const char *dst_mac,
                 c_time = rt.tv_sec;
                 //c_time = time(NULL);
                 if (c_time - s_time > icmp_timeout_sec) {
-                    printf("Timeout.\n");
+                    //printf("Timeout.\n");
                     break;
                 }
                 switch (icmp_header.type) {
@@ -236,7 +236,7 @@ int execute_ping(raw_socket_t sock, const char *dst_mac, const char *dst_ip) {
 
         ret = execute_arp(sock, &arp_packet, dst_ip);
         if (ret < 0) {
-            return FAILURE;
+            return ret;
         }
         snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x",
                  arp_packet.sha.addr[0], arp_packet.sha.addr[1], 
@@ -257,7 +257,7 @@ int execute_ping(raw_socket_t sock, const char *dst_mac, const char *dst_ip) {
             ret = ping_main(sock, &icmp_header, recv_ip, mac, 
                             dst_ip, id, sequence);
             if (ret < 0) {
-                return FAILURE;
+                return ret;
             }
             sequence++;
             usleep(MICRO_SEC);
@@ -268,7 +268,7 @@ int execute_ping(raw_socket_t sock, const char *dst_mac, const char *dst_ip) {
             ret = ping_main(sock, &icmp_header, recv_ip, mac, 
                             dst_ip, id, sequence);
             if (ret < 0) {
-                return FAILURE;
+                return ret;
             }
             sequence++;
             usleep(MICRO_SEC);
@@ -292,19 +292,19 @@ int ping_main(raw_socket_t sock, icmp_header_t *icmp_header,
     ret = send_icmp_ipv4(sock, icmp_header, NULL, 0, ICMP_TYPE_ECHO_REQ, 
                          ICMP_CODE_ECHO, mac, dst_ip);
     if (ret < 0) {
-        return FAILURE;
+        return ret;
     }
     while (1) {
         ret = recv_icmp(sock, icmp_header, recv_ip);
         if (ret < 0) {
-            return FAILURE;
+            return ret;
         }
         clock_gettime(CLOCK_REALTIME, &rt);
         c_time = rt.tv_sec;
         //c_time = time(NULL);
         if (c_time - s_time > icmp_timeout_sec) {
-            printf("Timeout.\n");
-            break;
+            //printf("Timeout.\n");
+            return ERR_TIMEOUT;
         }
         if (icmp_header->type != ICMP_TYPE_ECHO_RPY) {
             continue;
@@ -387,12 +387,12 @@ int recv_icmp(raw_socket_t sock, icmp_header_t *icmp_header,
         memset(icmp_header, 0, sizeof(icmp_header_t));
         ret = recv_ip(sock, &(icmp_header->ip_header), recv_ip_addr);
         if (ret < 0) {
-            return FAILURE;
+            return ret;
         }
         time(&c_time);
         if (blocking == 0 && c_time - s_time >= icmp_timeout_sec) {
-            printf("Timeout.\n");
-            return FAILURE;
+            //printf("Timeout.\n");
+            return ERR_TIMEOUT;
         }
         if (icmp_header->ip_header.protocol != IP_PROTO_ICMP) {
             continue;
@@ -422,7 +422,7 @@ int send_icmp_ipv4(raw_socket_t sock, icmp_header_t *icmp_header,
             ret = build_icmp_echo_header(icmp_header, icmp_echo_id,
                                          icmp_echo_sequence);
             if (ret < 0) {
-                return FAILURE;
+                return ret;
             }
             break;
     }
@@ -433,7 +433,7 @@ int send_icmp_ipv4(raw_socket_t sock, icmp_header_t *icmp_header,
 
     ret = build_ip_payload(icmp_header);
     if (ret < 0) {
-        return FAILURE;
+        return ret;
     }
 
     ip_payload_len = icmp_header->ip_header.payload_len;
@@ -449,7 +449,7 @@ int send_icmp_ipv4(raw_socket_t sock, icmp_header_t *icmp_header,
                     ip_payload, ip_payload_len, 
                     dst_mac, dst_ip, IP_PROTO_ICMP);
     if (ret < 0) {
-        return FAILURE;
+        return ret;
     }
     return ret;
 }

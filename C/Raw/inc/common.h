@@ -2,6 +2,7 @@
 #define __COMMON_H__
 
 /* Constants */
+#define ERR_TIMEOUT -2
 #define FAILURE     -1
 #define SUCCESS      0
 

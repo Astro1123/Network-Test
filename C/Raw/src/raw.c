@@ -88,8 +88,8 @@ int raw_recv(raw_socket_t sock, char *buf, size_t size) {
 
         time(&c_time);
         if (c_time - s_time >= timeout_sec) {
-            printf("Timeout.\n");
-            return FAILURE;
+            //printf("Timeout.\n");
+            return ERR_TIMEOUT;
         }
     }
     return ret;
@@ -128,7 +128,7 @@ int eth_recv(raw_socket_t sock, eth_header_t *header) {
     memset(buf, 0, sizeof(buf));
     ret = raw_recv(sock, buf, sizeof(buf));
     if (ret < 0) {
-        return FAILURE;
+        return ret;
     }
     memset(header, 0, sizeof(eth_header_t));
     return parse_eth_header(buf, ret, header);
@@ -264,7 +264,7 @@ int build_eth_header(eth_header_t *header, const char *dst_mac,
 
     ret = str_to_mac(dst_mac, strlen(dst_mac)+1, &dst);
     if (ret < 0) {
-        return FAILURE;
+        return ret;
     }
     header->dst_mac = dst;
     header->src_mac = if_haddr;
