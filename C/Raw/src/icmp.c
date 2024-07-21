@@ -93,10 +93,11 @@ int execute_traceroute(raw_socket_t sock, const char *dst_mac,
                 return FAILURE;
             }
             while (1) {
+                memset(addr[j].addr, 0, sizeof(addr[j].addr));
                 int isrecv = 0;
                 ret = recv_icmp(sock, &icmp_header, recv_ip);
                 if (ret < 0) {
-                    return FAILURE;
+                    break;
                 }
                 clock_gettime(CLOCK_REALTIME, &rt);
                 c_time = rt.tv_sec;
@@ -140,6 +141,9 @@ int execute_traceroute(raw_socket_t sock, const char *dst_mac,
             int find = 0;
 
             for (k = 0; k < set_idx; k++) {
+                if (comp_ip(addr_set[k], "0.0.0.0")) {
+                    continue;
+                }
                 if (comp_ip_ip(addr_set[k], addr[j])) {
                     recv_time_list[k][cnt[k]] = recv_time[j];
                     cnt[k]++;
@@ -150,6 +154,10 @@ int execute_traceroute(raw_socket_t sock, const char *dst_mac,
             if (!find) {
                 memcpy(addr_set[set_idx].addr, addr[j].addr, IPV4_ADDR_SIZE);
                 cnt[set_idx] = 1;
+                if (comp_ip(addr_set[set_idx], "0.0.0.0")) {
+                    set_idx++;
+                    continue;
+                }
                 recv_time_list[set_idx][0] = recv_time[j];
                 set_idx++;
             }
@@ -159,33 +167,41 @@ int execute_traceroute(raw_socket_t sock, const char *dst_mac,
             int result;
             size_t str_length = 0;
             char time_str[256];
-
-            snprintf(ip_str, sizeof(ip_str), "%d.%d.%d.%d", 
-                     addr_set[j].addr[0], addr_set[j].addr[1],
-                     addr_set[j].addr[2], addr_set[j].addr[3]);
-                            char *str_p;
-
-            memset(time_str, 0, sizeof(time_str));
-            str_p = time_str;
-            for (k = 0; k < cnt[j]; k++) {
-                result = snprintf(str_p, sizeof(time_str) - str_length, 
-                                  " %8.3f ms", recv_time_list[j][k]);
-                if (result > 0) {
-                    str_length += result;
-                    if (str_length >= sizeof(time_str) - 1) {
-                        break;
-                    }
-                    str_p += result;
+            
+            if (comp_ip(addr_set[j], "0.0.0.0")) {
+                if (j == 0) {
+                    printf("%2d: %-16s\n", i, "*");
                 } else {
-                    return FAILURE;
+                    printf("    %-16s\n", "*");
                 }
-            }
-            if (j == 0) {
-                printf("%2d: %-16s\ttime:%s\n", 
-                       i, ip_str, time_str);
             } else {
-                printf("    %-16s\ttime:%s\n", 
-                       ip_str, time_str);
+                snprintf(ip_str, sizeof(ip_str), "%d.%d.%d.%d", 
+                        addr_set[j].addr[0], addr_set[j].addr[1],
+                        addr_set[j].addr[2], addr_set[j].addr[3]);
+                                char *str_p;
+
+                memset(time_str, 0, sizeof(time_str));
+                str_p = time_str;
+                for (k = 0; k < cnt[j]; k++) {
+                    result = snprintf(str_p, sizeof(time_str) - str_length, 
+                                    " %8.3f ms", recv_time_list[j][k]);
+                    if (result > 0) {
+                        str_length += result;
+                        if (str_length >= sizeof(time_str) - 1) {
+                            break;
+                        }
+                        str_p += result;
+                    } else {
+                        return FAILURE;
+                    }
+                }
+                if (j == 0) {
+                    printf("%2d: %-16s\ttime:%s\n", 
+                           i, ip_str, time_str);
+                } else {
+                    printf("    %-16s\ttime:%s\n", 
+                           ip_str, time_str);
+                }
             }
             if (comp_ip(addr[j], dst_ip)) {
                 finish = 1;
