@@ -195,11 +195,11 @@ int main(void) {
         return FAILURE;
     }
 */
-/*
+
     ret = traceroute(1, TRACEROUTE_PROTO_UDP);
     if (ret < 0) {
         return FAILURE;
     }
-*/
+
     return SUCCESS;
 }

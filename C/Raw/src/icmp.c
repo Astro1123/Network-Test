@@ -62,8 +62,9 @@ int execute_traceroute(raw_socket_t sock, const char *dst_mac,
         ipv4_addr_t addr[3];
         int finish = 0;
         ipv4_addr_t addr_set[3] = {0};
-        int cnt[3] = {0};
+        unsigned int cnt[3] = {0};
         double recv_time[3] = {0};
+        double recv_time_list[3][3] = {0};
         unsigned int set_idx = 0;
 
         for (j = 0; j < 3; j++) {
@@ -129,6 +130,7 @@ int execute_traceroute(raw_socket_t sock, const char *dst_mac,
                 diff_sec = (long)(c_time - s_time);
                 diff_nsec = (long)(rt.tv_nsec - st.tv_nsec);
                 diff_time = diff_sec+((double)diff_nsec / NANO_SEC);
+                recv_time[j] = diff_time * MILLI_SEC;
                 memcpy(addr[j].addr, icmp_header.ip_header.src_ip.addr, IPV4_ADDR_SIZE);
                 break;
             }
@@ -139,31 +141,51 @@ int execute_traceroute(raw_socket_t sock, const char *dst_mac,
 
             for (k = 0; k < set_idx; k++) {
                 if (comp_ip_ip(addr_set[k], addr[j])) {
+                    recv_time_list[k][cnt[k]] = recv_time[j];
                     cnt[k]++;
                     find = 1;
-                    recv_time[k] += diff_time * MILLI_SEC;
                     break;
                 }
             }
             if (!find) {
                 memcpy(addr_set[set_idx].addr, addr[j].addr, IPV4_ADDR_SIZE);
                 cnt[set_idx] = 1;
-                recv_time[set_idx] = diff_time * MILLI_SEC;
+                recv_time_list[set_idx][0] = recv_time[j];
                 set_idx++;
             }
         }
         for (j = 0; j < set_idx; j++) {
             char ip_str[16];
+            int result;
+            size_t str_length = 0;
+            char time_str[256];
 
             snprintf(ip_str, sizeof(ip_str), "%d.%d.%d.%d", 
                      addr_set[j].addr[0], addr_set[j].addr[1],
                      addr_set[j].addr[2], addr_set[j].addr[3]);
+                            char *str_p;
+
+            memset(time_str, 0, sizeof(time_str));
+            str_p = time_str;
+            for (k = 0; k < cnt[j]; k++) {
+                result = snprintf(str_p, sizeof(time_str) - str_length, 
+                                  " %8.3f ms", recv_time_list[j][k]);
+                if (result > 0) {
+                    str_length += result;
+                    if (str_length >= sizeof(time_str) - 1) {
+                        break;
+                    }
+                    str_p += result;
+                } else {
+                    return FAILURE;
+                }
+            }
             if (j == 0) {
-                printf("%2d: %-16s\ttime: %.3f ms\n", 
-                       i, ip_str, recv_time[j] / cnt[j]);
+                printf("%2d: %-16s\ttime:%s\n", 
+                       i, ip_str, time_str);
             } else {
-                printf("    %-16s\ttime: %.3f ms\n", 
-                       ip_str, recv_time[j] / cnt[j]);
+                printf("    %-16s\ttime:%s\n", 
+                       ip_str, time_str);
             }
             if (comp_ip(addr[j], dst_ip)) {
                 finish = 1;
