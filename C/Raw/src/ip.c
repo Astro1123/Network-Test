@@ -96,19 +96,19 @@ int recv_ip(raw_socket_t sock, ip_header_t *ip_header,
         memset(ip_header, 0, sizeof(ip_header_t));
         ret = eth_recv(sock, &(ip_header->eth_header));
         if (ret < 0) {
-            return FAILURE;
+            return ret;
         }
         time(&c_time);
         if (blocking == 0 && c_time - s_time >= ip_timeout_sec) {
-            printf("Timeout.\n");
-            return FAILURE;
+            //printf("Timeout.\n");
+            return ERR_TIMEOUT;
         }
         head = ip_header->eth_header.payload[0];
         if (ip_header->eth_header.type == ETH_TYPE_IPV4 && ((head >> 4) & 0x0f) == 4) {
             ret = parse_ipv4_header(ip_header, ip_header->eth_header.payload, 
                                     ip_header->eth_header.payload_len);
             if (ret < 0) {
-                return FAILURE;
+                return ret;
             }
             if (recv_ip_addr == NULL) {
                 break;
@@ -136,7 +136,7 @@ int send_ipv4(raw_socket_t sock, ip_header_t *ip_header,
     }
     ret = build_eth_payload(ip_header);
     if (ret < 0) {
-        return FAILURE;
+        return ret;
     }
     /*
     for (i = 0; i < ip_header->eth_header.payload_len; i++) {
@@ -146,7 +146,7 @@ int send_ipv4(raw_socket_t sock, ip_header_t *ip_header,
     */
     ret = eth_send(sock, ip_header->eth_header);
     if (ret < 0) {
-        return FAILURE;
+        return ret;
     }
     return SUCCESS;
 }
@@ -159,7 +159,7 @@ int build_ipv4_header(ip_header_t *ip_header,
 
     ret = build_eth_header(&(ip_header->eth_header), dst_mac, ETH_TYPE_IPV4);
     if (ret < 0) {
-        return FAILURE;
+        return ret;
     }
     ip_header->protocol = protocol;
     
@@ -167,7 +167,7 @@ int build_ipv4_header(ip_header_t *ip_header,
 
     ret = str_to_ip(dst_ip_str, strlen(dst_ip_str)+1, &dst_ip);
     if (ret < 0) {
-        return FAILURE;
+        return ret;
     }
     ip_header->dst_ip = dst_ip;
 

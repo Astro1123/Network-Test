@@ -19,12 +19,12 @@ int execute_arp(raw_socket_t sock, arp_packet_t *arp_packet,
 
     ret = send_arp(sock, arp_packet, dst_ip);
     if (ret < 0) {
-        return FAILURE;
+        return ret;
     }
 
     ret = recv_arp(sock, arp_packet, dst_ip);
     if (ret < 0) {
-        return FAILURE;
+        return ret;
     }
     return SUCCESS;
 }
@@ -36,7 +36,7 @@ int send_arp(raw_socket_t sock, arp_packet_t *arp_packet,
     memset(arp_packet, 0, sizeof(arp_packet_t));
     ret = build_arp_req(arp_packet, dst_ip);
     if (ret < 0) {
-        return FAILURE;
+        return ret;
     }
     return send_arppacket(sock, arp_packet);
 }
@@ -51,12 +51,12 @@ int recv_arp(raw_socket_t sock, arp_packet_t *arp_packet,
         memset(arp_packet, 0, sizeof(arp_packet_t));
         ret = eth_recv(sock, &(arp_packet->eth_header));
         if (ret < 0) {
-            return FAILURE;
+            return ret;
         }
         time(&c_time);
         if (blocking == 0 && c_time - s_time >= arp_timeout_sec) {
-            printf("Timeout.\n");
-            return FAILURE;
+            //printf("Timeout.\n");
+            return ERR_TIMEOUT;
         }
         if (!comp_mac_mac(arp_packet->eth_header.dst_mac, if_haddr)) {
             continue;
@@ -85,12 +85,12 @@ int recv_arp_oper(raw_socket_t sock, arp_packet_t *arp_packet, int oper) {
         memset(arp_packet, 0, sizeof(arp_packet_t));
         ret = eth_recv(sock, &(arp_packet->eth_header));
         if (ret < 0) {
-            return FAILURE;
+            return ret;
         }
         time(&c_time);
         if (blocking == 0 && c_time - s_time >= arp_timeout_sec) {
-            printf("Timeout.\n");
-            return FAILURE;
+            //printf("Timeout.\n");
+            return ERR_TIMEOUT;
         }
         ret = parse_arp_rpy(arp_packet, arp_packet->eth_header.payload, 
                             arp_packet->eth_header.payload_len);
@@ -111,11 +111,11 @@ int build_arp_req(arp_packet_t *arp_packet, const char *dst_ip) {
 
     ret = str_to_mac(dst_mac, strlen(dst_mac)+1, &tha);
     if (ret < 0) {
-        return FAILURE;
+        return ret;
     }
     ret = str_to_ip(dst_ip, strlen(dst_ip)+1, &tpa);
     if (ret < 0) {
-        return FAILURE;
+        return ret;
     }
     arp_packet->htype = HTYPE;
     arp_packet->ptype = PTYPE_IPV4;
@@ -137,7 +137,7 @@ int build_garp(arp_packet_t *arp_packet) {
 
     ret = str_to_mac(dst_mac, strlen(dst_mac)+1, &tha);
     if (ret < 0) {
-        return FAILURE;
+        return ret;
     }
     arp_packet->htype = HTYPE;
     arp_packet->ptype = PTYPE_IPV4;
@@ -161,15 +161,15 @@ int build_arp_probe(arp_packet_t *arp_packet, const char *dst_ip) {
 
     ret = str_to_mac(dst_mac, strlen(dst_mac)+1, &tha);
     if (ret < 0) {
-        return FAILURE;
+        return ret;
     }
     ret = str_to_ip(dst_ip, strlen(dst_ip)+1, &tpa);
     if (ret < 0) {
-        return FAILURE;
+        return ret;
     }
     ret = str_to_ip(src_ip, strlen(src_ip)+1, &spa);
     if (ret < 0) {
-        return FAILURE;
+        return ret;
     }
     arp_packet->htype = HTYPE;
     arp_packet->ptype = PTYPE_IPV4;
@@ -284,7 +284,7 @@ int send_arppacket(raw_socket_t sock, arp_packet_t *arp_packet) {
     ret = build_eth_header(&(arp_packet->eth_header), 
                            "ff:ff:ff:ff:ff:ff", ETH_TYPE_ARP);
     if (ret < 0) {
-        return FAILURE;
+        return ret;
     }
     len = (size_t)(buf_p - buf);
     arp_packet->eth_header.payload_len = len;
@@ -293,7 +293,7 @@ int send_arppacket(raw_socket_t sock, arp_packet_t *arp_packet) {
     }
     ret = eth_send(sock, arp_packet->eth_header);
     if (ret < 0) {
-        return FAILURE;
+        return ret;
     }
     return SUCCESS;
 
@@ -305,7 +305,7 @@ int send_garp(raw_socket_t sock, arp_packet_t *arp_packet) {
     memset(arp_packet, 0, sizeof(arp_packet_t));
     ret = build_garp(arp_packet);
     if (ret < 0) {
-        return FAILURE;
+        return ret;
     }
     return send_arppacket(sock, arp_packet);
 }
@@ -317,7 +317,7 @@ int send_arp_probe(raw_socket_t sock, arp_packet_t *arp_packet,
     memset(arp_packet, 0, sizeof(arp_packet_t));
     ret = build_arp_probe(arp_packet, dst_ip);
     if (ret < 0) {
-        return FAILURE;
+        return ret;
     }
     return send_arppacket(sock, arp_packet);
 }

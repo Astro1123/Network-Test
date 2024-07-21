@@ -30,8 +30,17 @@ int arp(void) {
     }
     
     ret = execute_arp(sock, &arp_packet, data.dst_ip);
-    if (ret < 0) {
-        return FAILURE;
+    switch (ret) {
+        case FAILURE:
+            printf("Error.\n");
+            return FAILURE;
+            break;
+        case ERR_TIMEOUT:
+            printf("Timeout.\n");
+            return ERR_TIMEOUT;
+            break;
+        default:
+            break;
     }
     printf("%s", data.dst_ip);
     printf(" -> ");
@@ -63,8 +72,17 @@ int udp_recv(void) {
         return FAILURE;
     }
     ret = recv_udp(sock, &udp_header, NULL, 50000);
-    if (ret < 0) {
-        return FAILURE;
+    switch (ret) {
+        case FAILURE:
+            printf("Error.\n");
+            return FAILURE;
+            break;
+        case ERR_TIMEOUT:
+            printf("Timeout.\n");
+            return ERR_TIMEOUT;
+            break;
+        default:
+            break;
     }
 
     close(sock.fd);
@@ -93,8 +111,17 @@ int udp_send(void) {
                         message, 4,
                         data.src_port, data.dst_port, 
                         data.dst_mac, data.dst_ip);
-    if (ret < 0) {
-        return FAILURE;
+    switch (ret) {
+        case FAILURE:
+            printf("Error.\n");
+            return FAILURE;
+            break;
+        case ERR_TIMEOUT:
+            printf("Timeout.\n");
+            return ERR_TIMEOUT;
+            break;
+        default:
+            break;
     }
 
     close(sock.fd);
@@ -117,8 +144,17 @@ int ping(void) {
         return FAILURE;
     }
     ret = execute_ping(sock, NULL, data.dst_ip);
-    if (ret < 0) {
-        return FAILURE;
+    switch (ret) {
+        case FAILURE:
+            printf("Error.\n");
+            return FAILURE;
+            break;
+        case ERR_TIMEOUT:
+            printf("Timeout.\n");
+            return ERR_TIMEOUT;
+            break;
+        default:
+            break;
     }
     return SUCCESS;
 }
@@ -152,8 +188,17 @@ int traceroute(int mode, int proto) {
         *strp = '\0';
 
         ret = execute_arp(sock, &arp_packet, ip);
-        if (ret < 0) {
-            return FAILURE;
+        switch (ret) {
+            case FAILURE:
+                printf("Error.\n");
+                return FAILURE;
+                break;
+            case ERR_TIMEOUT:
+                printf("Timeout.\n");
+                return ERR_TIMEOUT;
+                break;
+            default:
+                break;
         }
         snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x",
                  arp_packet.sha.addr[0], arp_packet.sha.addr[1], 
@@ -162,8 +207,17 @@ int traceroute(int mode, int proto) {
     }
 
     ret = execute_traceroute(sock, mac_str, "8.8.8.8", proto);
-    if (ret < 0) {
-        return FAILURE;
+    switch (ret) {
+        case FAILURE:
+            printf("Error.\n");
+            return FAILURE;
+            break;
+        case ERR_TIMEOUT:
+            printf("Timeout.\n");
+            return ERR_TIMEOUT;
+            break;
+        default:
+            break;
     }
     return SUCCESS;
 }
