@@ -53,8 +53,6 @@ int send_icmp_ipv4(raw_socket_t sock, icmp_header_t *icmp_header,
 int recv_icmp(raw_socket_t sock, icmp_header_t *icmp_header,
               const char *recv_ip_addr);
 
-void set_timeout_icmp(int timeout);
-int get_timeout_icmp(void);
 void set_icmp_echo_id(unsigned short id);
 unsigned short get_icmp_echo_id(void);
 void set_icmp_echo_sequence(unsigned short sequence);

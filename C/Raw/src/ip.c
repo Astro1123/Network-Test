@@ -1,6 +1,5 @@
 #include <string.h>
 #include <stdio.h>
-#include <time.h>
 
 #include "ip.h"
 
@@ -9,8 +8,6 @@ unsigned short identification = 0xca9f;//0x1234;
 unsigned char  flags = 2;
 unsigned int   fragment_offset = 0;
 unsigned char  ttl = 64;//ttl = 128;
-
-int ip_timeout_sec = 10;
 
 int build_eth_payload(ip_header_t *ip_header);
 
@@ -89,18 +86,14 @@ int recv_ip(raw_socket_t sock, ip_header_t *ip_header,
             const char *recv_ip_addr) {
     int ret;
     unsigned char head;
-    time_t s_time, c_time;
-
-    time(&s_time);
+    
     while (1) {
         memset(ip_header, 0, sizeof(ip_header_t));
         ret = eth_recv(sock, &(ip_header->eth_header));
         if (ret < 0) {
             return ret;
         }
-        time(&c_time);
-        if (blocking == 0 && c_time - s_time >= ip_timeout_sec) {
-            //printf("Timeout.\n");
+        if (timeout_flag && !blocking) {
             return ERR_TIMEOUT;
         }
         head = ip_header->eth_header.payload[0];
@@ -313,12 +306,4 @@ unsigned char get_tos(void) {
 
 unsigned short get_id(void) {
     return identification;
-}
-
-void set_ip_timeout(int timeout) {
-    ip_timeout_sec = timeout;
-}
-
-int get_ip_timeout(void) {
-    return ip_timeout_sec;
 }

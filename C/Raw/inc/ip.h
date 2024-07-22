@@ -51,7 +51,5 @@ unsigned int get_offset(void);
 unsigned char get_flags(void);
 unsigned char get_tos(void);
 unsigned short get_id(void);
-void set_ip_timeout(int timeout);
-int get_ip_timeout(void);
 
 #endif /* __IP_H__ */

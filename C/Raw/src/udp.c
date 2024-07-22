@@ -1,12 +1,9 @@
 #include <string.h>
-#include <time.h>
 #include <stdio.h>
 
 #include "udp.h"
 
-int udp_timeout_sec = 10;
 int calc_udp_checksum = 1;
-
 
 static int build_ip_payload(udp_header_t *udp_header, const char *dst_ip_str);
 
@@ -49,18 +46,14 @@ int parse_udp_header(udp_header_t *udp_header,
 int recv_udp(raw_socket_t sock, udp_header_t *udp_header,
              const char *recv_ip_addr, const unsigned short recv_port) {
     int ret;
-    time_t s_time, c_time;
 
-    time(&s_time);
     while (1) {
         memset(udp_header, 0, sizeof(udp_header_t));
         ret = recv_ip(sock, &(udp_header->ip_header), recv_ip_addr);
         if (ret < 0) {
             return ret;
         }
-        time(&c_time);
-        if (blocking == 0 && c_time - s_time >= udp_timeout_sec) {
-            //printf("Timeout.\n");
+        if (timeout_flag && !blocking) {
             return ERR_TIMEOUT;
         }
         if (udp_header->ip_header.protocol != IP_PROTO_UDP) {
@@ -213,18 +206,10 @@ static int build_ip_payload(udp_header_t *udp_header, const char *dst_ip_str) {
     return SUCCESS;
 }
 
-void set_udp_timeout(int timeout) {
-    udp_timeout_sec = timeout;
-}
-
 void set_calc_udp_checksum(int num) {
     calc_udp_checksum = num;
 }
 
 int get_calc_udp_checksum(void) {
     return calc_udp_checksum;
-}
-
-int get_udp_timeout(void) {
-    return udp_timeout_sec;
 }

@@ -34,14 +34,12 @@ int send_arp(raw_socket_t sock, arp_packet_t *arp_packet,
 
 int recv_arp_rpy(raw_socket_t sock, arp_packet_t *arp_packet,
                  const char *dst_ip);
+int recv_arp_proxy(raw_socket_t sock, arp_packet_t *arp_packet);
 int recv_arp(raw_socket_t sock, arp_packet_t *arp_packet);
 
 int recv_arp_oper(raw_socket_t sock, arp_packet_t *arp_packet, int oper);
 int send_garp(raw_socket_t sock, arp_packet_t *arp_packet);
 int send_arp_probe(raw_socket_t sock, arp_packet_t *arp_packet, 
                    const char *dst_ip);
-
-void set_timeout_arp(int timeout);
-int get_timeout_arp(void);
 
 #endif /* __ARP_H__ */
