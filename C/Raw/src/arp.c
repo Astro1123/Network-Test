@@ -1,10 +1,7 @@
 #include <string.h>         // memset(), strncpy()
-#include <time.h>           // time()
 #include <stdio.h>        // printf()
 
 #include "arp.h"
-
-int arp_timeout_sec = 10;
 
 int send_arppacket(raw_socket_t sock, arp_packet_t *arp_packet);
 int parse_arp_rpy(arp_packet_t *arp_packet, 
@@ -44,17 +41,13 @@ int send_arp(raw_socket_t sock, arp_packet_t *arp_packet,
 int recv_arp_rpy(raw_socket_t sock, arp_packet_t *arp_packet,
                  const char *dst_ip) {
     int ret;
-    time_t s_time, c_time;
-
-    time(&s_time);
+    
     while (1) {
         ret = recv_arp_oper(sock, arp_packet, ARP_RPY);
         if (ret < 0) {
             return ret;
         }
-        time(&c_time);
-        if (blocking == 0 && c_time - s_time >= arp_timeout_sec) {
-            //printf("Timeout.\n");
+        if (timeout_flag && !blocking) {
             return ERR_TIMEOUT;
         }
         if (!comp_mac_mac(arp_packet->eth_header.dst_mac, if_haddr)) {
@@ -74,20 +67,41 @@ int recv_arp_rpy(raw_socket_t sock, arp_packet_t *arp_packet,
     return ret;
 }
 
+int recv_arp_proxy(raw_socket_t sock, arp_packet_t *arp_packet) {
+    int ret;
+    
+    while (1) {
+        ret = recv_arp_oper(sock, arp_packet, ARP_RPY);
+        if (ret < 0) {
+            return ret;
+        }
+        if (timeout_flag && !blocking) {
+            return ERR_TIMEOUT;
+        }
+        if (!comp_mac_mac(arp_packet->eth_header.dst_mac, if_haddr)) {
+            continue;
+        }
+        if (!comp_mac_mac(arp_packet->tha, if_haddr)) {
+            continue;
+        }
+        if (!comp_ip_ip(arp_packet->tpa, if_paddr)) {
+            continue;
+        }
+        break;
+    }
+    return ret;
+}
+
 int recv_arp(raw_socket_t sock, arp_packet_t *arp_packet) {
     int ret;
-    time_t s_time, c_time;
-
-    time(&s_time);
+    
     while (1) {
         memset(arp_packet, 0, sizeof(arp_packet_t));
         ret = eth_recv(sock, &(arp_packet->eth_header));
         if (ret < 0) {
             return ret;
         }
-        time(&c_time);
-        if (blocking == 0 && c_time - s_time >= arp_timeout_sec) {
-            //printf("Timeout.\n");
+        if (timeout_flag && !blocking) {
             return ERR_TIMEOUT;
         }
         ret = parse_arp_rpy(arp_packet, arp_packet->eth_header.payload, 
@@ -102,17 +116,13 @@ int recv_arp(raw_socket_t sock, arp_packet_t *arp_packet) {
 
 int recv_arp_oper(raw_socket_t sock, arp_packet_t *arp_packet, int oper) {
     int ret;
-    time_t s_time, c_time;
-
-    time(&s_time);
+    
     while (1) {
         ret = recv_arp(sock, arp_packet);
         if (ret < 0) {
             return ret;
         }
-        time(&c_time);
-        if (blocking == 0 && c_time - s_time >= arp_timeout_sec) {
-            //printf("Timeout.\n");
+        if (timeout_flag && !blocking) {
             return ERR_TIMEOUT;
         }
         if (arp_packet->oper == oper) {
@@ -340,12 +350,3 @@ int send_arp_probe(raw_socket_t sock, arp_packet_t *arp_packet,
     }
     return send_arppacket(sock, arp_packet);
 }
-
-void set_timeout_arp(int timeout) {
-    arp_timeout_sec = timeout;
-}
-
-int get_timeout_arp(void) {
-    return arp_timeout_sec;
-}
-

@@ -1,8 +1,15 @@
 #include <string.h>         // memset()
 #include <stdlib.h>         // strtol()
 #include <stdio.h>          // printf()
+#include <unistd.h>         // alerm()
 
 #include "common.h"
+
+volatile int timeout_flag = 0;
+struct sigaction sa = {0};
+int timeout_sec = 10;
+int blocking = 0;
+int timer_set_flag = 0;
 
 int str_to_mac(const char *str, size_t size, mac_addr_t *mac) {
     unsigned int i, j;
@@ -98,4 +105,41 @@ int comp_ip_ip(ipv4_addr_t ip_1, ipv4_addr_t ip_2) {
         }
     }
     return COMP_TRUE;
+}
+
+void set_blocking(int num) {
+    blocking = num;
+}
+
+void set_timeout(int sec) {
+    timeout_sec = sec;
+}
+
+int get_blocking(void) {
+    return blocking;
+}
+
+int get_timeout(void) {
+    return timeout_sec;
+}
+
+void set_timer(void) {
+    sigemptyset(&sa.sa_mask);
+    sa.sa_handler = signal_handler;
+    sa.sa_flags = 0;
+    sigaction(SIGALRM, &sa, NULL);
+
+    reset_timer();
+}
+
+void reset_timer(void) {
+    timeout_flag = 0;
+    timer_set_flag = 1;
+    alarm(timeout_sec);
+}
+
+void signal_handler(int signum) {
+    (void)signum;
+    timeout_flag = 1;
+    timer_set_flag = 0;
 }

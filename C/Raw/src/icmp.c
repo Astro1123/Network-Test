@@ -20,8 +20,6 @@ int ping_main(raw_socket_t sock, icmp_header_t *icmp_header,
               const char *recv_ip, const char *mac, const char *dst_ip, 
               unsigned short id, unsigned short sequence);
 
-int icmp_timeout_sec = 10;
-
 unsigned short icmp_echo_id = 0;
 unsigned short icmp_echo_sequence = 0;
 unsigned int   ping_count = 3;
@@ -101,9 +99,7 @@ int execute_traceroute(raw_socket_t sock, const char *dst_mac,
                 }
                 clock_gettime(CLOCK_REALTIME, &rt);
                 c_time = rt.tv_sec;
-                //c_time = time(NULL);
-                if (c_time - s_time > icmp_timeout_sec) {
-                    //printf("Timeout.\n");
+                if (timeout_flag && !blocking) {
                     break;
                 }
                 switch (icmp_header.type) {
@@ -288,7 +284,6 @@ int ping_main(raw_socket_t sock, icmp_header_t *icmp_header,
 
     clock_gettime(CLOCK_REALTIME, &st);
     s_time = st.tv_sec;
-    //s_time = time(NULL);
     ret = send_icmp_ipv4(sock, icmp_header, NULL, 0, ICMP_TYPE_ECHO_REQ, 
                          ICMP_CODE_ECHO, mac, dst_ip);
     if (ret < 0) {
@@ -301,9 +296,7 @@ int ping_main(raw_socket_t sock, icmp_header_t *icmp_header,
         }
         clock_gettime(CLOCK_REALTIME, &rt);
         c_time = rt.tv_sec;
-        //c_time = time(NULL);
-        if (c_time - s_time > icmp_timeout_sec) {
-            //printf("Timeout.\n");
+        if (timeout_flag && !blocking) {
             return ERR_TIMEOUT;
         }
         if (icmp_header->type != ICMP_TYPE_ECHO_RPY) {
@@ -380,18 +373,14 @@ int parse_icmp_header(icmp_header_t *icmp_header,
 int recv_icmp(raw_socket_t sock, icmp_header_t *icmp_header,
               const char *recv_ip_addr) {
     int ret;
-    time_t s_time, c_time;
-
-    time(&s_time);
+    
     while (1) {
         memset(icmp_header, 0, sizeof(icmp_header_t));
         ret = recv_ip(sock, &(icmp_header->ip_header), recv_ip_addr);
         if (ret < 0) {
             return ret;
         }
-        time(&c_time);
-        if (blocking == 0 && c_time - s_time >= icmp_timeout_sec) {
-            //printf("Timeout.\n");
+        if (timeout_flag && !blocking) {
             return ERR_TIMEOUT;
         }
         if (icmp_header->ip_header.protocol != IP_PROTO_ICMP) {
@@ -529,14 +518,6 @@ static int build_ip_payload(icmp_header_t *icmp_header) {
     memcpy(&(icmp_header->ip_header.payload[idx]), 
            icmp_header->payload, icmp_header->payload_len);
     return SUCCESS;
-}
-
-void set_timeout_icmp(int timeout) {
-    icmp_timeout_sec = timeout;
-}
-
-int get_timeout_icmp(void) {
-    return icmp_timeout_sec;
 }
 
 void set_icmp_echo_id(unsigned short id) {

@@ -5,18 +5,15 @@
 #include <arpa/inet.h>          // htons()
 #include <net/ethernet.h>       // L2 protocols
 #include <net/if.h>             // struct ifreq
-#include <unistd.h>             // close()
+#include <unistd.h>             // close(), alerm()
 #include <sys/ioctl.h>          // ioctl(), SIOCGIFINDEX, SIOCGIFHWADDR
 #include <sys/select.h>         // select()
-#include <time.h>               // time()
+#include <errno.h>              // errno
 #include <stdint.h>             // uint32_t
 
 //#define PROMISCUOUS
 
 #include "raw.h"
-
-int blocking = 0;
-int timeout_sec = 10;
 
 mac_addr_t  if_haddr = {0};
 ipv4_addr_t if_paddr = {0};
@@ -50,15 +47,16 @@ int raw_recv(raw_socket_t sock, char *buf, size_t size) {
     socklen_t rll_size;
     struct timeval timeout_sel;
     fd_set fds, readfds;
-    time_t c_time, s_time;
 
     memset(&rll, 0, sizeof(rll));
     rll_size = sizeof(rll);
 
     FD_ZERO(&readfds);
     FD_SET(sock.fd, &readfds);
-
-    time(&s_time);
+    
+    if (!timer_set_flag) {
+        set_timer();
+    }
 
     while (1) {
         memcpy(&fds, &readfds, sizeof(fd_set));
@@ -67,6 +65,9 @@ int raw_recv(raw_socket_t sock, char *buf, size_t size) {
         timeout_sel.tv_usec = 0;
         ret = select(sock.fd + 1, &fds , NULL, NULL, &timeout_sel);
         if (ret < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
             perror("select");
             return FAILURE;
         }
@@ -75,6 +76,9 @@ int raw_recv(raw_socket_t sock, char *buf, size_t size) {
             ret = recvfrom(sock.fd, buf, size, 0, 
                            (struct sockaddr *)&rll, &rll_size);
             if (ret < 0) {
+                if (errno == EINTR) {
+                    continue;
+                }
                 perror("recvfrom");
                 close(sock.fd);
                 return FAILURE;
@@ -86,9 +90,7 @@ int raw_recv(raw_socket_t sock, char *buf, size_t size) {
             continue;
         }
 
-        time(&c_time);
-        if (c_time - s_time >= timeout_sec) {
-            //printf("Timeout.\n");
+        if (timeout_flag && !blocking) {
             return ERR_TIMEOUT;
         }
     }
@@ -270,20 +272,4 @@ int build_eth_header(eth_header_t *header, const char *dst_mac,
     header->src_mac = if_haddr;
     header->type = type;
     return SUCCESS;
-}
-
-void set_blocking(int num) {
-    blocking = num;
-}
-
-void set_timeout(int sec) {
-    timeout_sec = sec;
-}
-
-int get_blocking(void) {
-    return blocking;
-}
-
-int get_timeout(void) {
-    return timeout_sec;
 }

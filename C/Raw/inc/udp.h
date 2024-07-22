@@ -30,9 +30,7 @@ int send_udp_ipv4(raw_socket_t sock, udp_header_t *udp_header,
                   const int src_port, const int dst_port,
                   const char *dst_mac, const char *dst_ip);
 
-void set_udp_timeout(int timeout);
 void set_calc_udp_checksum(int num);
 int get_calc_udp_checksum(void);
-int get_udp_timeout(void);
 
 #endif /* __UDP_H__ */
