@@ -22,7 +22,7 @@ int execute_arp(raw_socket_t sock, arp_packet_t *arp_packet,
         return ret;
     }
 
-    ret = recv_arp(sock, arp_packet, dst_ip);
+    ret = recv_arp_rpy(sock, arp_packet, dst_ip);
     if (ret < 0) {
         return ret;
     }
@@ -41,13 +41,42 @@ int send_arp(raw_socket_t sock, arp_packet_t *arp_packet,
     return send_arppacket(sock, arp_packet);
 }
 
-int recv_arp(raw_socket_t sock, arp_packet_t *arp_packet, 
-             const char *dst_ip) {
+int recv_arp_rpy(raw_socket_t sock, arp_packet_t *arp_packet,
+                 const char *dst_ip) {
     int ret;
     time_t s_time, c_time;
-    const char *broadcast_mac = "ff:ff:ff:ff:ff:ff";
-    const char *arp_broadcast_mac = "00:00:00:00:00:00";
-    const char *arp_broadcast_ip = "0.0.0.0";
+
+    time(&s_time);
+    while (1) {
+        ret = recv_arp_oper(sock, arp_packet, ARP_RPY);
+        if (ret < 0) {
+            return ret;
+        }
+        time(&c_time);
+        if (blocking == 0 && c_time - s_time >= arp_timeout_sec) {
+            //printf("Timeout.\n");
+            return ERR_TIMEOUT;
+        }
+        if (!comp_mac_mac(arp_packet->eth_header.dst_mac, if_haddr)) {
+            continue;
+        }
+        if (!comp_ip(arp_packet->spa, dst_ip)) {
+            continue;
+        }
+        if (!comp_mac_mac(arp_packet->tha, if_haddr)) {
+            continue;
+        }
+        if (!comp_ip_ip(arp_packet->tpa, if_paddr)) {
+            continue;
+        }
+        break;
+    }
+    return ret;
+}
+
+int recv_arp(raw_socket_t sock, arp_packet_t *arp_packet) {
+    int ret;
+    time_t s_time, c_time;
 
     time(&s_time);
     while (1) {
@@ -61,34 +90,12 @@ int recv_arp(raw_socket_t sock, arp_packet_t *arp_packet,
             //printf("Timeout.\n");
             return ERR_TIMEOUT;
         }
-        if (!comp_mac_mac(arp_packet->eth_header.dst_mac, if_haddr)) {
-            if (!comp_mac(arp_packet->eth_header.dst_mac, broadcast_mac)) {
-                continue;
-            }
-        }
         ret = parse_arp_rpy(arp_packet, arp_packet->eth_header.payload, 
                             arp_packet->eth_header.payload_len);
-        if (arp_packet->oper == ARP_RPY) {
-            if (comp_ip(arp_packet->spa, dst_ip)) {
-                if (comp_mac_mac(arp_packet->tha, if_haddr)) {
-                    if (comp_ip_ip(arp_packet->tpa, if_paddr)) {
-                        break;
-                    }
-                } else if (comp_mac(arp_packet->tha, arp_broadcast_mac)) {
-                    break;
-                }
-            } else if (comp_ip(arp_packet->spa, arp_broadcast_ip)) {
-                if (comp_mac(arp_packet->tha, arp_broadcast_mac)) {
-                    break;
-                }
-            } else {
-                if (comp_mac_mac(arp_packet->tha, if_haddr)) {
-                    if (comp_ip_ip(arp_packet->tpa, if_paddr)) {
-                        break;
-                    }
-                }
-            }
+        if (ret < 0) {
+            return ret;
         }
+        break;
     }
     return ret;
 }
@@ -99,8 +106,7 @@ int recv_arp_oper(raw_socket_t sock, arp_packet_t *arp_packet, int oper) {
 
     time(&s_time);
     while (1) {
-        memset(arp_packet, 0, sizeof(arp_packet_t));
-        ret = eth_recv(sock, &(arp_packet->eth_header));
+        ret = recv_arp(sock, arp_packet);
         if (ret < 0) {
             return ret;
         }
@@ -109,11 +115,7 @@ int recv_arp_oper(raw_socket_t sock, arp_packet_t *arp_packet, int oper) {
             //printf("Timeout.\n");
             return ERR_TIMEOUT;
         }
-        ret = parse_arp_rpy(arp_packet, arp_packet->eth_header.payload, 
-                            arp_packet->eth_header.payload_len);
-        if (oper != ARP_RPY && oper != ARP_REQ) {
-            break;
-        } else if (arp_packet->oper == oper) {
+        if (arp_packet->oper == oper) {
             break;
         }
     }
