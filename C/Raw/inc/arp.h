@@ -32,8 +32,9 @@ int execute_arp(raw_socket_t sock, arp_packet_t *arp_packet,
 int send_arp(raw_socket_t sock, arp_packet_t *arp_packet, 
              const char *dst_ip);
 
-int recv_arp(raw_socket_t sock, arp_packet_t *arp_packet, 
-             const char *dst_ip);
+int recv_arp_rpy(raw_socket_t sock, arp_packet_t *arp_packet,
+                 const char *dst_ip);
+int recv_arp(raw_socket_t sock, arp_packet_t *arp_packet);
 
 int recv_arp_oper(raw_socket_t sock, arp_packet_t *arp_packet, int oper);
 int send_garp(raw_socket_t sock, arp_packet_t *arp_packet);
