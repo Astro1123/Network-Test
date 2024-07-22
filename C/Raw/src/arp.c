@@ -45,6 +45,9 @@ int recv_arp(raw_socket_t sock, arp_packet_t *arp_packet,
              const char *dst_ip) {
     int ret;
     time_t s_time, c_time;
+    const char *broadcast_mac = "ff:ff:ff:ff:ff:ff";
+    const char *arp_broadcast_mac = "00:00:00:00:00:00";
+    const char *arp_broadcast_ip = "0.0.0.0";
 
     time(&s_time);
     while (1) {
@@ -59,14 +62,28 @@ int recv_arp(raw_socket_t sock, arp_packet_t *arp_packet,
             return ERR_TIMEOUT;
         }
         if (!comp_mac_mac(arp_packet->eth_header.dst_mac, if_haddr)) {
-            continue;
+            if (!comp_mac(arp_packet->eth_header.dst_mac, broadcast_mac)) {
+                continue;
+            }
         }
         ret = parse_arp_rpy(arp_packet, arp_packet->eth_header.payload, 
                             arp_packet->eth_header.payload_len);
         if (arp_packet->oper == ARP_RPY) {
-            if (comp_ip_ip(arp_packet->tpa, if_paddr)) {
-                if (comp_ip(arp_packet->spa, dst_ip)) {
-                    if (comp_mac_mac(arp_packet->tha, if_haddr)) {
+            if (comp_ip(arp_packet->spa, dst_ip)) {
+                if (comp_mac_mac(arp_packet->tha, if_haddr)) {
+                    if (comp_ip_ip(arp_packet->tpa, if_paddr)) {
+                        break;
+                    }
+                } else if (comp_mac(arp_packet->tha, arp_broadcast_mac)) {
+                    break;
+                }
+            } else if (comp_ip(arp_packet->spa, arp_broadcast_ip)) {
+                if (comp_mac(arp_packet->tha, arp_broadcast_mac)) {
+                    break;
+                }
+            } else {
+                if (comp_mac_mac(arp_packet->tha, if_haddr)) {
+                    if (comp_ip_ip(arp_packet->tpa, if_paddr)) {
                         break;
                     }
                 }
